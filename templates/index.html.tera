@@ -1,0 +1,27 @@
+{% extends "base" %}
+
+{% block main %}
+    <!-- Movies Section -->
+    <section class="container mt-2">
+        <h2>Shows</h2>
+        {% for srs in series -%}
+            <a class='d-flex align-items-center justify-content-between my-2' href='/series/{{ srs.tag }}'>
+                {% if srs.img_file_path %}
+                    <img alt='{{ srs.name }}' src='public/images/{{ srs.img_file_path }}' class='vid-img col-6'>
+                {% endif %}
+                <h3 class='col-6'>{{ srs.name }}</h3>
+            </a>
+        {%- endfor %}
+    </section>
+    <section class="container mt-2">
+        <h2>Movies</h2>
+        {% for movie in movies %}
+            <a href="/watch/{{ movie.id }}" class='d-flex align-items-center justify-content-between my-2'>
+                {% if movie.img_file_path %}
+                    <img alt='{{ movie.name }}' src='public/images/{{ movie.img_file_path }}' class='vid-img col-6'>
+                {% endif %}
+                <h3>{{ movie.name }}</h3>      
+            </a>
+        {% endfor %}
+    </section>
+{% endblock main %}

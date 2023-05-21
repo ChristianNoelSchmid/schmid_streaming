@@ -1,0 +1,12 @@
+# Please ensure you have .cargo/config in root directory with the following:
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+
+# Also ensure you have the linker installed:
+sudo apt-get install gcc-aarch64-linux-gnu
+
+# Add the architecture to target:
+rustup target add aarch64-unknown-linux-gnu
+
+# Then, finally, run the build command
+cargo build --release --target=aarch64-unknown-linux-gnu

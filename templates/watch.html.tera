@@ -1,0 +1,8 @@
+{% extends "base" %}
+{% block main %}
+<section class="container mt-2">
+    <video width="100%" controls autoplay>
+        <source src="/public/videos/{{ video_path }}" type="video/{{ video_format }}">
+    </video>
+</section>
+{% endblock %}
