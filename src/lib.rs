@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate diesel;
-
-pub mod models;
-pub mod schema;
 pub mod sqlite;
+pub mod auth_middleware;
+pub mod ip_middleware;

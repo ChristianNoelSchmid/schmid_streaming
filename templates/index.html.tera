@@ -20,7 +20,7 @@
                 {% if movie.img_file_path %}
                     <img alt='{{ movie.name }}' src='public/images/{{ movie.img_file_path }}' class='vid-img col-6'>
                 {% endif %}
-                <h3>{{ movie.name }}</h3>      
+                <h3 class='col-6'>{{ movie.name }}</h3>      
             </a>
         {% endfor %}
     </section>

@@ -5,15 +5,15 @@
         <h2>{{ series_name }}</h1> 
         <p>{{ series_desc }}</p>
         {% if series_img_path %}
-            <img style='border-radius: 75px; border: solid 1px black' src='/public/images/{{ series_img_path }}' alt="{{ series_name }}">
+            <img style='border-radius: 75px; border: solid 1px black; max-width: 100%;' src='/public/images/{{ series_img_path }}' alt="{{ series_name }}">
         {% endif %}
-        {% for season in seasons_ids_and_names %}
+        {% for episodes in season_episodes %}
         <h2 class="mt-4">Season {{ loop.index }}:</h2> 
             <ul class="row">
-                {% for id_and_name in season %}
+                {% for episode in episodes %}
                   <li class="col-lg-4 col-md-6">
-                    <a href="/watch/{{ id_and_name.0 }}"
-                        <li>Episode {{ loop.index }}: {{ id_and_name.1 }}</li>
+                    <a href="/watch/{{ episode.video_id }}"
+                        <li>Episode {{ loop.index }}: {{ episode.name }}</li>
                     </a>
                   </li>
                 {% endfor %}

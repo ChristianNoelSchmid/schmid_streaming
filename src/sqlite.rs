@@ -1,9 +1,7 @@
-use diesel::{Connection, SqliteConnection};
 use std::env;
+use sqlx::SqlitePool;
 
-pub fn get_conn() -> SqliteConnection {
+pub async fn get_conn() -> sqlx::Result<SqlitePool> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in env vars");
-
-    SqliteConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
+    SqlitePool::connect(&database_url).await
 }

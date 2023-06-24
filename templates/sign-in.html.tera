@@ -1,0 +1,13 @@
+{% extends "base" %}
+
+{% block main %}
+<div class="container" style="height: 75vh">
+    <form method="POST" action="sign-in">
+        <div class="form-group">
+            <label for="access_key">Access Key:</label>
+            <input name="access_key" type="password" class="form-control" id="access_key">
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+{% endblock %}

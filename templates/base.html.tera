@@ -18,7 +18,7 @@
 <body class="d-flex flex-column justify-content-stretch">
   <header>
       <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-        <a class="container navbar-brand" href="/">SchmidStreamer</a>
+        <a class="container navbar-brand" href="/">SchmidStreaming</a>
       </nav>
   </header>
   <main class="container">
@@ -26,7 +26,7 @@
     {% endblock main %}
   </main>
   <footer class="container border-top footer text-muted">
-    &copy; 2022 - SchmidStreamer - <a asp-area="" asp-page="/Privacy">Privacy</a>
+    &copy; 2022 - SchmidStreaming - <a asp-area="" asp-page="/Privacy">Privacy</a>
   </footer>
 </body>
 
