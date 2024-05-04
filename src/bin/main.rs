@@ -1,18 +1,13 @@
 #[macro_use] extern crate rocket;
 
-use std::env;
+use std::{env, fs, path::PathBuf, str::FromStr};
 
-use chrono::{Utc, NaiveDateTime, Duration};
-
-use dotenv::dotenv;
 use rocket_dyn_templates::{Template, context};
 use rocket_seek_stream::SeekStream;
 
-use rocket::{
-    fs::FileServer, response::Redirect, form::Form
-};
+use rocket::{ form::Form, fs::FileServer, http::{Cookie, CookieJar}, response::Redirect, State };
 
-use schmid_streaming::{sqlite::get_conn, auth_middleware::AuthUser, ip_middleware::Ip};
+use schmid_streaming::{auth_middleware::AuthUser, config::Config, sqlite::get_conn};
 use serde::Serialize;
 
 #[derive(FromForm)]
@@ -26,36 +21,20 @@ fn sign_in_get() -> Template {
 }
 
 #[post("/sign-in", data = "<input>")]
-async fn sign_in_post(input: Form<SignInForm>, ip: Ip) -> Redirect {
-
-    struct IpAddr { pub id: i64, pub last_log_on: NaiveDateTime }
-
-    // Load environment data from .env file in root directory
-    dotenv().ok();
+async fn sign_in_post(input: Form<SignInForm>, jar: &CookieJar<'_>) -> Redirect {
+    dotenv::dotenv().unwrap();
     let secret = env::var("SECRET").expect("SECRET must be set");
-    let db = get_conn().await.expect("Could not connect to database");
-
-    let ip_addr = sqlx::query_as!(IpAddr, "SELECT id, last_log_on FROM ip_addrs WHERE addr = ?", ip.0).fetch_one(&db).await;
 
     return if input.access_key == secret {
-        let utc_now = Utc::now().naive_utc();
-        match ip_addr {
-            Ok(ip_addr) => {
-                if Utc::now().naive_utc() - ip_addr.last_log_on < Duration::days(30) {
-                    sqlx::query!(
-                        "UPDATE ip_addrs SET last_log_on = ? WHERE id = ?",
-                        utc_now, ip_addr.id
-                    ).execute(&db).await.unwrap();
-                }
-            },
-            Err(sqlx::Error::RowNotFound) => {
-                sqlx::query!(
-                    "INSERT INTO ip_addrs (addr, last_log_on) VALUES (?, ?)",
-                    ip.0, utc_now,
-                ).execute(&db).await.unwrap();
-            },
-            Err(e) => panic!("{:?}", e)
-        }
+        let cookie = Cookie::build(("secret", secret))
+            .path("/")
+            .secure(true)
+            .http_only(true)
+            .permanent()
+            .build();
+
+        jar.add(cookie);
+
         Redirect::to(uri!(index))
     } else {
         Redirect::to(uri!(sign_in_get))
@@ -82,7 +61,7 @@ async fn index(_user: AuthUser) -> Template {
     let movies = sqlx::query_as!(Movie, r"
         SELECT id, name, img_file_path FROM videos v WHERE NOT EXISTS (
             SELECT * FROM episodes WHERE video_id = v.id
-        )"
+        ) AND active = TRUE"
     )
         .fetch_all(&db).await.unwrap();
 
@@ -121,7 +100,7 @@ async fn series_details(tg: String, _user: AuthUser) -> Template {
     for season in seasons {
         let eps = sqlx::query_as!(Episode, r"
                 SELECT video_id, name FROM episodes JOIN videos ON video_id = id
-                WHERE series_tag = ? AND season_idx = ?
+                WHERE series_tag = ? AND season_idx = ? AND active = TRUE
                 ORDER BY idx
             ",
             tg, season.idx
@@ -139,7 +118,7 @@ async fn series_details(tg: String, _user: AuthUser) -> Template {
 }
 
 #[get("/watch/<video_id>")]
-async fn watch<'a>(video_id: String) -> std::io::Result<SeekStream<'a>> {
+async fn watch<'a>(video_id: String, config: &State<Config>) -> std::io::Result<SeekStream<'a>> {
 
     struct Video { file_path: String }
 
@@ -147,14 +126,18 @@ async fn watch<'a>(video_id: String) -> std::io::Result<SeekStream<'a>> {
     let video = sqlx::query_as!(Video, "SELECT file_path FROM videos WHERE id = ?", video_id)
         .fetch_one(&db).await.unwrap();
 
-    SeekStream::from_path(format!("./static/videos/{}", video.file_path))
+    let mut path = PathBuf::from_str(&config.video_dir_path).unwrap();
+    path.push(video.file_path);
+    SeekStream::from_path(path.to_str().unwrap())
 }
 
 #[launch]
 fn rocket() -> _ {
     dotenv::dotenv().ok();
+    let config = serde_json::from_str::<Config>(&fs::read_to_string("./config.json").unwrap()).unwrap();
     rocket::build()
         .attach(Template::fairing())
+        .manage(config)
         .register("/", catchers![redirect_to_sign_in])
         .mount("/public", FileServer::from("./static"))
         .mount("/", routes!(sign_in_get, sign_in_post, index, series_details, watch))

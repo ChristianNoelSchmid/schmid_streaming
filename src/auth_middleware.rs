@@ -1,39 +1,49 @@
-use chrono::{Utc, Duration, NaiveDateTime};
+use lazy_static::lazy_static;
+use std::env;
+
 use dotenv::dotenv;
+use regex::Regex;
 use rocket::{
-    http::Status,
+    http::{Cookie, Status},
     request::{FromRequest, Outcome},
 };
 
-use crate::{sqlite::get_conn, ip_middleware::get_ip};
+lazy_static! {
+    static ref AUTH_RE: Regex =
+        Regex::new(r"(?i)basic\s*(?-i)(?P<tok>[^;]+)(;(?P<user_id>\d+))?").unwrap();
+}
 
 pub struct AuthUser;
 
+#[derive(Debug)]
+pub struct AuthUserError;
+
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for AuthUser {
-    type Error = ();
+    type Error = AuthUserError;
 
     async fn from_request(req: &'r rocket::Request<'_>) -> Outcome<Self, Self::Error> {
-        struct IpAddr { last_log_on: NaiveDateTime }
-        let ip = get_ip(req);
-
-        // Load environment data from .env file in root directory
         dotenv().ok();
-        let db = get_conn().await.unwrap();
+        let secret = env::var("SECRET").expect("SECRET must be set");
+        let key = req.query_value::<String>("secret");
+        let mut found_id = false;
 
-        let result = sqlx::query_as!(IpAddr, "SELECT last_log_on FROM ip_addrs WHERE addr = ?", ip)
-            .fetch_one(&db).await;
-
-        return match result {
-            Ok(res) => {
-                return if Utc::now().naive_utc() - res.last_log_on < Duration::days(30) {
-                    Outcome::Success(AuthUser)
-                } else {
-                    Outcome::Failure((Status::Unauthorized, ()))
-                }
-            },
-            Err(sqlx::Error::RowNotFound) => Outcome::Failure((Status::Unauthorized, ())),
-            Err(e) => panic!("{:?}", e)
+        if let Some(Ok(key)) = key {
+            if key == secret {
+                found_id = true;
+            }
         }
+
+        if let Some(cookie) = req.cookies().get("secret") {
+            if cookie.value() == secret {
+                found_id = true;
+            }
+        }
+
+        if found_id {
+            return Outcome::Success(AuthUser);
+        }
+
+        Outcome::Error((Status::Unauthorized, AuthUserError))
     }
 }
